@@ -29,11 +29,11 @@ let saved=[];try{saved=JSON.parse(localStorage.getItem('velav1-saved')||'[]');if
 let currentWork=null, currentFilter='all', query='', toastTimer;
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2800);}
 function updateSaved(){try{localStorage.setItem('velav1-saved',JSON.stringify(saved));}catch{}$$('[data-count]').forEach(el=>el.textContent=saved.length);$$('[data-save]').forEach(el=>{let yes=saved.includes(el.dataset.save);el.textContent=yes?'✓':'+';el.setAttribute('aria-pressed',yes);el.setAttribute('aria-label',`${yes?'取消收藏':'收藏'} ${works.find(w=>w.id===el.dataset.save).title}`);});if(currentWork){$('#save-work').textContent=saved.includes(currentWork.id)?'已在清单中 · 点击移除 ✓':'加入项目清单 +';}renderSaved();}
-function toggleSave(id){if(saved.includes(id)){saved=saved.filter(x=>x!==id);toast('已从项目清单移除');}else{saved.push(id);toast('已加入项目清单，右上角可以查看');}updateSaved();}
+function toggleSave(id){invalidateBrief();if(saved.includes(id)){saved=saved.filter(x=>x!==id);toast('已从项目清单移除');}else{saved.push(id);toast('已加入项目清单，右上角可以查看');}updateSaved();}
 function renderCards(list,target,prefix){target.replaceChildren();list.forEach(w=>{let article=document.createElement('article');article.className='work-card';article.innerHTML=`<button class="work-open" data-work="${w.id}" aria-label="查看 ${w.title}"><div class="work-visual">${art(w.art,prefix)}<span class="work-label">${w.category.toUpperCase()} / CONCEPT</span></div></button><div class="work-info"><div><h3>${w.title}</h3><p>${w.subtitle}</p></div><button class="save-small" data-save="${w.id}" aria-label="收藏 ${w.title}" aria-pressed="false">+</button></div>`;target.append(article);});updateSaved();}
 function showModal(dialog){dialog.showModal();document.body.classList.add('modal-open');}
 function openWork(id){currentWork=works.find(w=>w.id===id);if(!currentWork)return;$('#detail-type').textContent=categories[currentWork.category].label;$('#detail-art').innerHTML=art(currentWork.art,'detail');$('#detail-art').classList.remove('preview-playing');$('#work-title').textContent=currentWork.title;$('#work-description').textContent=currentWork.description;$('#detail-direction').textContent=currentWork.direction;$('#detail-use').textContent=currentWork.use;$('#detail-tags').replaceChildren(...currentWork.tags.map(tag=>{let e=document.createElement('span');e.textContent=tag;return e;}));$('#motion-controls').hidden=currentWork.category!=='film';$('#play-preview').textContent='播放动效预览 ▶';updateSaved();showModal($('#work-dialog'));}
-function renderSaved(){const target=$('#saved-works');target.replaceChildren();if(!saved.length){const p=document.createElement('p');p.textContent='还没有收藏参考，也可以直接填写你的想法。';target.append(p);return;}saved.forEach(id=>{const w=works.find(x=>x.id===id);let div=document.createElement('div');div.className='saved-item';div.innerHTML=`<span>${w.title}<small>${w.tags.join(' / ')} · 概念参考</small></span><button data-remove="${w.id}" aria-label="移除 ${w.title}">移除 ×</button>`;target.append(div);});}
+function renderSaved(){const target=$('#saved-works');target.replaceChildren();target.hidden=!saved.length;if(!saved.length)return;saved.forEach(id=>{const w=works.find(x=>x.id===id);let div=document.createElement('div');div.className='saved-item';div.innerHTML=`<span>${w.title}<small>${w.tags.join(' / ')} · 概念参考</small></span><button data-remove="${w.id}" aria-label="移除 ${w.title}">移除 ×</button>`;target.append(div);});}
 function openBrief(){if($('#work-dialog').open)$('#work-dialog').close();renderSaved();showModal($('#brief-dialog'));}
 function tokensFor(text){return text.toLowerCase().split(/[\s，。！？、,;；/]+/).filter(Boolean);}
 function searchWorks(){const lower=query.toLowerCase().trim();const filtered=works.filter(w=>currentFilter==='all'||w.category===currentFilter);let scored=filtered.map(w=>({w,score:lower?w.keywords.filter(k=>lower.includes(k)).length+w.tags.filter(t=>lower.includes(t)).length:1}));if(lower)scored=scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score);renderCards(scored.map(r=>r.w),$('#search-grid'),'search');$('#empty-state').hidden=!!scored.length;$('#search-status').textContent=lower?`找到 ${scored.length} 个相关方向 · 点击查看创作思路，或加入项目清单`:`浏览 ${scored.length} 个概念方向 · 选择喜欢的作品，再一起细化`;$$('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.filter===currentFilter));}
@@ -47,7 +47,61 @@ $$('[data-query]').forEach(b=>b.addEventListener('click',()=>{query=b.dataset.qu
 $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>{currentFilter=b.dataset.filter;query=$('#style-query').value.trim();searchWorks();}));
 $('#clear-search').addEventListener('click',()=>{query='';currentFilter='all';$('#style-query').value='';searchWorks();});
 $('#use-query').addEventListener('click',()=>{if(query)$('#brief-idea').value=query;openBrief();});
-$('#brief-form').addEventListener('submit',e=>{e.preventDefault();const lines=['你好，我想聊一个项目。','',`服务方向：${$('#brief-service').value}`,`预算范围：${$('#brief-budget').value}`,`期望时间：${$('#brief-time').value}`,'',`我的想法：${$('#brief-idea').value.trim()||'想先聊聊，一起确定方向。'}`,'','喜欢的概念参考：',...(saved.length?saved.map(id=>{const w=works.find(x=>x.id===id);return `• ${w.title}（${w.tags.join('、')}）`;}):['暂未选择']), '', '参考站点：https://yi-chieh1210.github.io/velav1/'];$('#brief-output').value=lines.join('\n');$('#brief-result').hidden=false;$('#brief-result').scrollIntoView({behavior:motionOff?'auto':'smooth',block:'nearest'});});
+// Files stay in this tab. No upload endpoint, remote storage or file execution.
+const attachmentLimits = { perFile: 100 * 1000 * 1000, total: 100 * 1000 * 1000, count: 1 };
+const attachmentExtensions = new Set('ppt pptx pdf doc docx jpg jpeg png webp gif heic heif avif mp4 mov webm m4v avi mkv'.split(' '));
+let attachments = [];
+function fileSize(bytes){return bytes < 1000000 ? `${Math.ceil(bytes / 1000)} KB` : `${(bytes / 1000000).toFixed(1)} MB`;}
+function invalidateBrief(){$('#brief-result').hidden=true;}
+function renderAttachments(){
+  const list=$('#attachment-list');list.replaceChildren();
+  attachments.forEach((file,index)=>{
+    const row=document.createElement('li'),text=document.createElement('span'),name=document.createElement('strong'),detail=document.createElement('small'),remove=document.createElement('button');
+    name.textContent=file.name;detail.textContent=`${fileSize(file.size)} · 待另行发送`;
+    text.append(name,detail);remove.type='button';remove.textContent='移除 ×';remove.setAttribute('aria-label',`移除附件 ${file.name}`);
+    remove.addEventListener('click',()=>{attachments.splice(index,1);renderAttachments();invalidateBrief();$('#attachment-status').textContent='已移除附件。';});
+    row.append(text,remove);list.append(row);
+  });
+}
+function addAttachments(files){
+  const messages=[];let added=0;
+  for(const file of files){
+    const extension=file.name.split('.').pop().toLowerCase();
+    if(!attachmentExtensions.has(extension)){messages.push(`${file.name}：暂不支持此格式。`);continue;}
+    if(!file.size){messages.push(`${file.name}：文件为空。`);continue;}
+    if(file.size>attachmentLimits.perFile){messages.push(`${file.name}：超过单个 100 MB 的上限，请改用网盘链接。`);continue;}
+    if(attachments.some(x=>x.name===file.name&&x.size===file.size&&x.lastModified===file.lastModified)){messages.push(`${file.name}：已在清单中。`);continue;}
+    if(attachments.length>=attachmentLimits.count){messages.push(`${file.name}：仅允许 1 个附件，请先移除已有文件再添加。`);continue;}
+    if(attachments.reduce((sum,x)=>sum+x.size,0)+file.size>attachmentLimits.total){messages.push(`${file.name}：附件不能超过 100 MB。`);continue;}
+    attachments.push(file);added++;
+  }
+  renderAttachments();invalidateBrief();
+  $('#attachment-status').textContent=[added?`已添加 ${added} 个文件到清单（未上传）。`:'',...messages].filter(Boolean).join('\n');
+}
+$('#choose-attachments').addEventListener('click',()=>$('#brief-files').click());
+$('#brief-files').addEventListener('change',e=>{addAttachments(e.target.files);e.target.value='';});
+const dropzone=$('#attachment-dropzone');let dragDepth=0;
+dropzone.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;dropzone.classList.add('drag-over');});
+dropzone.addEventListener('dragover',e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';});
+dropzone.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;dropzone.classList.remove('drag-over');}});
+dropzone.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;dropzone.classList.remove('drag-over');if(e.dataTransfer)addAttachments(e.dataTransfer.files);});
+// Prevent a misplaced file drop from navigating away and losing the brief.
+for(const event of ['dragover','drop'])window.addEventListener(event,e=>{if(Array.from(e.dataTransfer?.types||[]).includes('Files'))e.preventDefault();});
+function syncDeadline(){
+  const enabled=$('#brief-time').value==='指定日期之前',date=$('#brief-date');
+  const now=new Date(),pad=n=>String(n).padStart(2,'0');
+  date.min=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  date.disabled=!enabled;date.required=enabled;$('#brief-date-field').hidden=!enabled;
+}
+$('#brief-time').addEventListener('change',syncDeadline);syncDeadline();
+$('#brief-form').addEventListener('input',invalidateBrief);
+$('#brief-form').addEventListener('change',invalidateBrief);
+$('#brief-form').addEventListener('submit',e=>{
+  e.preventDefault();syncDeadline();if(!e.target.reportValidity())return;
+  const deadline=$('#brief-time').value==='指定日期之前'?`${$('#brief-date').value} 之前`:$('#brief-time').value;
+  const lines=['你好，我想聊一个项目。','',`服务方向：${$('#brief-service').value}`,`预算范围：${$('#brief-budget').value}`,`期望时间：${deadline}`,'',`我的想法：${$('#brief-idea').value.trim()||'想先聊聊，一起确定方向。'}`,'','喜欢的概念参考：',...(saved.length?saved.map(id=>{const w=works.find(x=>x.id===id);return `• ${w.title}（${w.tags.join('、')}）`;}):['暂未选择']),'','参考附件（仅列出名称，文件未上传，需另行发送）：',...(attachments.length?attachments.map(file=>`• ${file.name.replace(/[\r\n]/g,' ')}（${fileSize(file.size)}）`):['暂未添加']),'','参考站点：https://yi-chieh1210.github.io/velav1/'];
+  $('#brief-output').value=lines.join('\n');$('#brief-result').hidden=false;$('#brief-result').scrollIntoView({behavior:motionOff?'auto':'smooth',block:'nearest'});
+});
 async function copyText(text,fallback){try{await navigator.clipboard.writeText(text);toast('已复制');}catch{if(fallback){fallback.focus();fallback.select();toast('浏览器未允许复制，文字已选中，请手动复制');}else toast('请手动复制微信号：jay5vae');}}
 $('#copy-wechat').addEventListener('click',()=>copyText('jay5vae'));$('#copy-brief').addEventListener('click',()=>copyText($('#brief-output').value,$('#brief-output')));
 $('#download-brief').addEventListener('click',()=>{let url=URL.createObjectURL(new Blob(['\ufeff'+$('#brief-output').value],{type:'text/plain;charset=utf-8'}));let a=document.createElement('a');a.href=url;a.download='VELAV-项目简介.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('项目简介已下载');});
