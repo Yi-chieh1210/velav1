@@ -47,36 +47,29 @@ $$('[data-query]').forEach(b=>b.addEventListener('click',()=>{query=b.dataset.qu
 $$('[data-filter]').forEach(b=>b.addEventListener('click',()=>{currentFilter=b.dataset.filter;query=$('#style-query').value.trim();searchWorks();}));
 $('#clear-search').addEventListener('click',()=>{query='';currentFilter='all';$('#style-query').value='';searchWorks();});
 $('#use-query').addEventListener('click',()=>{if(query)$('#brief-idea').value=query;openBrief();});
-// Files stay in this tab. No upload endpoint, remote storage or file execution.
-const attachmentLimits = { perFile: 100 * 1000 * 1000, total: 100 * 1000 * 1000, count: 1 };
-const attachmentExtensions = new Set('ppt pptx pdf doc docx jpg jpeg png webp gif heic heif avif mp4 mov webm m4v avi mkv'.split(' '));
-let attachments = [];
-function fileSize(bytes){return bytes < 1000000 ? `${Math.ceil(bytes / 1000)} KB` : `${(bytes / 1000000).toFixed(1)} MB`;}
+// Files are sent only after the customer clicks the submit button.
+const attachmentLimits = { total: 25 * 1024 * 1024 };
+let attachments = [], submissionPending = false;
+function fileSize(bytes){return bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;}
 function invalidateBrief(){$('#brief-result').hidden=true;}
 function renderAttachments(){
   const list=$('#attachment-list');list.replaceChildren();
   attachments.forEach((file,index)=>{
     const row=document.createElement('li'),text=document.createElement('span'),name=document.createElement('strong'),detail=document.createElement('small'),remove=document.createElement('button');
-    name.textContent=file.name;detail.textContent=`${fileSize(file.size)} · 待另行发送`;
-    text.append(name,detail);remove.type='button';remove.textContent='移除 ×';remove.setAttribute('aria-label',`移除附件 ${file.name}`);
-    remove.addEventListener('click',()=>{attachments.splice(index,1);renderAttachments();invalidateBrief();$('#attachment-status').textContent='已移除附件。';});
+    name.textContent=file.name;detail.textContent=`${fileSize(file.size)} · 待提交`;
+    text.append(name,detail);remove.type='button';remove.disabled=submissionPending;remove.textContent='移除 ×';remove.setAttribute('aria-label',`移除附件 ${file.name}`);
+    remove.addEventListener('click',()=>{if(submissionPending)return;attachments.splice(index,1);renderAttachments();invalidateBrief();$('#attachment-status').textContent='已移除附件。';});
     row.append(text,remove);list.append(row);
   });
+  const total=attachments.reduce((sum,file)=>sum+file.size,0);
+  $('#attachment-total').textContent=`已选 ${attachments.length} 个文件 · ${(total/1024/1024).toFixed(2)} / 25 MB`;
 }
 function addAttachments(files){
-  const messages=[];let added=0;
-  for(const file of files){
-    const extension=file.name.split('.').pop().toLowerCase();
-    if(!attachmentExtensions.has(extension)){messages.push(`${file.name}：暂不支持此格式。`);continue;}
-    if(!file.size){messages.push(`${file.name}：文件为空。`);continue;}
-    if(file.size>attachmentLimits.perFile){messages.push(`${file.name}：超过单个 100 MB 的上限，请改用网盘链接。`);continue;}
-    if(attachments.some(x=>x.name===file.name&&x.size===file.size&&x.lastModified===file.lastModified)){messages.push(`${file.name}：已在清单中。`);continue;}
-    if(attachments.length>=attachmentLimits.count){messages.push(`${file.name}：仅允许 1 个附件，请先移除已有文件再添加。`);continue;}
-    if(attachments.reduce((sum,x)=>sum+x.size,0)+file.size>attachmentLimits.total){messages.push(`${file.name}：附件不能超过 100 MB。`);continue;}
-    attachments.push(file);added++;
-  }
-  renderAttachments();invalidateBrief();
-  $('#attachment-status').textContent=[added?`已添加 ${added} 个文件到清单（未上传）。`:'',...messages].filter(Boolean).join('\n');
+  if(submissionPending)return;
+  const result=VelavSubmission.selectFiles(attachments,Array.from(files));
+  if(result.error){$('#attachment-status').textContent=result.error;return;}
+  attachments=result.files;renderAttachments();invalidateBrief();
+  $('#attachment-status').textContent=result.added?`已添加 ${result.added} 个文件，点击「发送项目需求」后才会上传。`:'所选文件已在清单中，无需重复添加。';
 }
 $('#choose-attachments').addEventListener('click',()=>$('#brief-files').click());
 $('#brief-files').addEventListener('change',e=>{addAttachments(e.target.files);e.target.value='';});
@@ -96,11 +89,51 @@ function syncDeadline(){
 $('#brief-time').addEventListener('change',syncDeadline);syncDeadline();
 $('#brief-form').addEventListener('input',invalidateBrief);
 $('#brief-form').addEventListener('change',invalidateBrief);
-$('#brief-form').addEventListener('submit',e=>{
-  e.preventDefault();syncDeadline();if(!e.target.reportValidity())return;
-  const deadline=$('#brief-time').value==='指定日期之前'?`${$('#brief-date').value} 之前`:$('#brief-time').value;
-  const lines=['你好，我想聊一个项目。','',`服务方向：${$('#brief-service').value}`,`预算范围：${$('#brief-budget').value}`,`期望时间：${deadline}`,'',`我的想法：${$('#brief-idea').value.trim()||'想先聊聊，一起确定方向。'}`,'','喜欢的概念参考：',...(saved.length?saved.map(id=>{const w=works.find(x=>x.id===id);return `• ${w.title}（${w.tags.join('、')}）`;}):['暂未选择']),'','参考附件（仅列出名称，文件未上传，需另行发送）：',...(attachments.length?attachments.map(file=>`• ${file.name.replace(/[\r\n]/g,' ')}（${fileSize(file.size)}）`):['暂未添加']),'','参考站点：https://yi-chieh1210.github.io/velav1/'];
-  $('#brief-output').value=lines.join('\n');$('#brief-result').hidden=false;$('#brief-result').scrollIntoView({behavior:motionOff?'auto':'smooth',block:'nearest'});
+function buildBriefText(){
+  const deadline=$('#brief-time').value==='指定日期之前'?`${$('#brief-date').value||'待确定日期'} 之前`:$('#brief-time').value;
+  return ['你好，我想聊一个项目。','',`称呼：${$('#brief-name').value.trim()||'未填写'}`,`联系方式：${$('#brief-contact').value.trim()||'未填写'}`,`服务方向：${$('#brief-service').value}`,`预算范围：${$('#brief-budget').value}`,`期望时间：${deadline}`,'',`我的想法：${$('#brief-idea').value.trim()||'想先聊聊，一起确定方向。'}`,'','喜欢的概念参考：',...(saved.length?saved.map(id=>{const w=works.find(x=>x.id===id);return `• ${w.title}（${w.tags.join('、')}）`;}):['暂未选择']),'','参考附件清单（文本不包含文件本身）：',...(attachments.length?attachments.map(file=>`• ${file.name.replace(/[\r\n]/g,' ')}（${fileSize(file.size)}）`):['暂未添加']),'','参考站点：https://yi-chieh1210.github.io/velav1/'].join('\n');
+}
+$('#preview-brief').addEventListener('click',()=>{
+  $('#brief-output').value=buildBriefText();$('#brief-result').hidden=false;$('#brief-result').scrollIntoView({behavior:motionOff?'auto':'smooth',block:'nearest'});
+});
+const configuredFormId=window.VELAV_FORMINIT?.formId||'';
+const submissionReady=VelavSubmission.validFormId(configuredFormId);
+$('#send-brief').disabled=!submissionReady;
+if(submissionReady)$('#submission-status').textContent='提交成功后会显示确认编号。刷新页面前请先完成提交，或复制简介保存。';
+function setSubmissionBusy(busy){
+  submissionPending=busy;
+  $$('#brief-form input,#brief-form select,#brief-form textarea,#brief-form button').forEach(el=>el.disabled=busy);
+  if(!busy){syncDeadline();$('#send-brief').disabled=!submissionReady;}
+  $('#choose-attachments').disabled=busy;$('#brief-files').disabled=busy;renderAttachments();
+  $('#brief-form').setAttribute('aria-busy',String(busy));
+  $('#send-brief').textContent=busy?'正在发送，请稍候…':'发送项目需求 ↗';
+}
+$('#brief-form').addEventListener('submit',async e=>{
+  e.preventDefault();if(submissionPending)return;
+  syncDeadline();if(!e.target.reportValidity())return;
+  const status=$('#submission-status');
+  if(!submissionReady){status.textContent='在线提交尚未启用，请通过微信 jay5vae 联系。';return;}
+  if(!$('#brief-contact').value.trim()||!$('#brief-idea').value.trim()){status.textContent='请填写联系方式和需求描述，不能只填空格。';return;}
+  if($('#brief-website').value){status.textContent='表单校验未通过，请刷新后重新填写。';return;}
+  const validation=VelavSubmission.selectFiles([],attachments);
+  if(validation.error){status.textContent=validation.error;return;}
+  const summary=buildBriefText(),payload=new FormData();
+  if($('#brief-name').value.trim())payload.append('fi-sender-fullName',$('#brief-name').value.trim());
+  payload.append('fi-text-contact',$('#brief-contact').value.trim());
+  payload.append('fi-text-project',summary);
+  payload.append('_gotcha','');
+  for(const file of attachments)payload.append('fi-file-attachments[]',file,file.name);
+  setSubmissionBusy(true);status.dataset.state='pending';status.textContent='正在上传需求和附件，请保持页面打开…';
+  const progress=$('#submission-progress');progress.hidden=false;progress.value=0;
+  try{
+    const result=await VelavSubmission.send(configuredFormId,payload,percent=>{progress.value=percent;status.textContent=percent<100?`正在上传 ${percent}%…`:'上传完成，正在等待接收确认…';});
+    const receipt=result.submission.hashId;
+    e.target.reset();attachments=[];$('#brief-files').value='';$('#attachment-status').textContent='';invalidateBrief();
+    status.dataset.state='success';status.textContent=`需求已成功提交。确认编号：${receipt}。我们会通过你留下的联系方式与你沟通。`;
+    toast('项目需求已提交');
+  }catch(error){
+    status.dataset.state='error';status.textContent=error.message+' 你的填写内容和附件仍保留在本页，也可复制简介后通过微信 jay5vae 联系。';
+  }finally{setSubmissionBusy(false);progress.hidden=true;}
 });
 async function copyText(text,fallback){try{await navigator.clipboard.writeText(text);toast('已复制');}catch{if(fallback){fallback.focus();fallback.select();toast('浏览器未允许复制，文字已选中，请手动复制');}else toast('请手动复制微信号：jay5vae');}}
 $('#copy-wechat').addEventListener('click',()=>copyText('jay5vae'));$('#copy-brief').addEventListener('click',()=>copyText($('#brief-output').value,$('#brief-output')));

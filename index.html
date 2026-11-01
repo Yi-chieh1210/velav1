@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#080b10"><meta name="description" content="VELAV — 影像、网站与视觉设计。探索风格，收集灵感，把想法变成作品。">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
-<title>VELAV — Vision in Motion</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src https://forminit.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>VELAV — Vision in Motion</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><script src="forminit-config.js" defer></script><script src="submission.js" defer></script><script src="app.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">跳至主要内容</a>
@@ -46,12 +46,17 @@
 <span class="attachment-icon" aria-hidden="true">＋</span>
 <h3 id="attachment-title">把参考文件，放在这里。</h3>
 <p>拖动文件到这里，或 <button type="button" id="choose-attachments">选择文件 ↗</button></p>
-<input type="file" id="brief-files" class="sr-only" tabindex="-1" aria-label="选择参考文件" accept=".ppt,.pptx,.pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.avif,.mp4,.mov,.webm,.m4v,.avi,.mkv">
-<p class="attachment-limits">PPT / PDF / Word / 图片 / 视频<br>仅限 1 个文件 · 不超过 100 MB</p>
+<input type="file" id="brief-files" class="sr-only" tabindex="-1" aria-label="选择参考文件" multiple>
+<p class="attachment-limits">PPT / Excel / 文档 / 图片 / 视频 / 音频 / 压缩包<br>可添加多个文件 · 全部附件合计不超过 25 MB</p>
 </div>
-<p class="attachment-notice">此处仅整理附件清单，不会上传文件。请将文件另行发至微信 jay5vae；大视频可提供网盘链接。刷新页面后需重新选择。</p>
-<ul id="attachment-list" aria-label="待发送的参考文件"></ul>
+<p class="attachment-notice">选好文件后，点击下方「发送项目需求」统一提交。25 MB 只计算附件，文字描述另算；超大文件可在需求中填写网盘链接。</p>
+<p id="attachment-total" class="small-note">已选 0 个文件 · 0 / 25 MB</p><ul id="attachment-list" aria-label="待发送的参考文件"></ul>
 <p id="attachment-status" role="status" aria-live="polite"></p>
-</section><form id="brief-form"><label for="brief-service">想做什么</label><select id="brief-service"><option value="还没确定，想一起聊聊">还没确定，想一起聊聊</option><option>影像与宣传片</option><option>网站制作</option><option>视觉设计</option><option>多种服务一起做</option></select><div class="form-pair"><div><label for="brief-budget">预算范围</label><select id="brief-budget"><option>先沟通，再确定</option><option>¥30 以内</option><option>¥30–100</option><option>¥100–300</option><option>¥300 以上</option></select></div><div><label for="brief-time">期望时间</label><select id="brief-time"><option>时间可以商量</option><option>一周以内</option><option>半个月以内</option><option>一个月以内</option><option>三个月以内</option><option>指定日期之前</option></select></div></div><div id="brief-date-field" hidden><label for="brief-date">希望在这一天之前完成</label><input type="date" id="brief-date" disabled></div><label for="brief-idea">说说你的想法</label><textarea id="brief-idea" rows="4" maxlength="1200" placeholder="你在做什么？希望谁看到？有什么喜欢的参考？"></textarea><p class="small-note">预算仅用于沟通，不是报价。内容只在当前浏览器处理，不会自动发送。</p><button type="submit" class="button gold">整理成项目简介 <span>↗</span></button></form><div id="brief-result" hidden><label for="brief-output">你的项目简介</label><textarea id="brief-output" rows="8" readonly></textarea><div class="brief-result-actions"><button id="copy-brief" class="button gold">复制简介</button><button id="download-brief" class="button outline">下载文本 ↓</button></div><p class="small-note">复制后发到微信 jay5vae。文本只包含附件名称，文件请另行发送。</p></div></div></dialog>
+</section><form id="brief-form" enctype="multipart/form-data">
+<div class="form-pair"><div><label for="brief-name">怎么称呼你（选填）</label><input id="brief-name" maxlength="80" autocomplete="name" placeholder="你的名字或品牌名"></div><div><label for="brief-contact">联系方式</label><input id="brief-contact" maxlength="160" required placeholder="微信号、手机号或邮箱"></div></div>
+<div class="form-honeypot" aria-hidden="true"><label for="brief-website">请留空</label><input id="brief-website" name="_gotcha" tabindex="-1" autocomplete="off"></div><label for="brief-service">想做什么</label><select id="brief-service"><option value="还没确定，想一起聊聊">还没确定，想一起聊聊</option><option>影像与宣传片</option><option>网站制作</option><option>视觉设计</option><option>多种服务一起做</option></select><div class="form-pair"><div><label for="brief-budget">预算范围</label><select id="brief-budget"><option>先沟通，再确定</option><option>¥30 以内</option><option>¥30–100</option><option>¥100–300</option><option>¥300 以上</option></select></div><div><label for="brief-time">期望时间</label><select id="brief-time"><option>时间可以商量</option><option>一周以内</option><option>半个月以内</option><option>一个月以内</option><option>三个月以内</option><option>指定日期之前</option></select></div></div><div id="brief-date-field" hidden><label for="brief-date">希望在这一天之前完成</label><input type="date" id="brief-date" disabled></div><label for="brief-idea">说说你的想法</label><textarea id="brief-idea" rows="4" maxlength="1200" required placeholder="你在做什么？希望谁看到？有什么喜欢的参考？"></textarea><p class="small-note">预算仅用于沟通，不是报价。点击发送后，联系方式、需求和附件将交由 Forminit 保存，供 VELAV 联系你使用。</p><button id="send-brief" type="submit" class="button gold" disabled>发送项目需求 <span>↗</span></button>
+<progress id="submission-progress" max="100" value="0" aria-label="附件上传进度" hidden></progress>
+<p id="submission-status" class="small-note" role="status" aria-live="polite">在线提交尚未启用。可以先整理简介，通过微信 jay5vae 联系。</p>
+<button id="preview-brief" type="button" class="text-link">只整理简介，复制或下载 ↗</button></form><div id="brief-result" hidden><label for="brief-output">你的项目简介</label><textarea id="brief-output" rows="8" readonly></textarea><div class="brief-result-actions"><button id="copy-brief" class="button gold">复制简介</button><button id="download-brief" class="button outline">下载文本 ↓</button></div><p class="small-note">复制后发到微信 jay5vae。文本只包含附件名称，文件请另行发送。</p></div></div></dialog>
 <div id="toast" role="status" aria-live="polite"></div>
 </body></html>

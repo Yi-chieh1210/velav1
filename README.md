@@ -10,14 +10,14 @@ Public preview: https://yi-chieh1210.github.io/velav1/
 - Dedicated film, web and visual galleries using hash routes that work on GitHub Pages.
 - Six clearly labelled original concept studies, with detail dialogs and motion experiments.
 - Keyword-based style exploration, category filters, shortlist saved in the browser.
-- Local project-brief generator, copy/download actions and WeChat contact.
+- Project inquiries delivered through Forminit, with copy/download fallback and WeChat contact.
 - Keyboard access, native dialogs and reduced-motion support.
 
 The examples are concept studies, not client commissions. Motion previews are SVG/CSS experiments, not finished commercial films. Style search matches local keywords and tags; it does not call an AI service.
 
 ## Hosting
 
-Static HTML/CSS/JavaScript; no dependencies or build step. GitHub Pages: deploy `main`, root directory. No custom domain, AWS service, API key, analytics or backend. Briefs are not submitted automatically; the user copies or downloads the text. Only shortlisted work IDs are stored in localStorage.
+Static HTML/CSS/JavaScript; no dependencies or build step. GitHub Pages: deploy `main`, root directory. No custom domain, user AWS service, API key or analytics. Forminit is the external form backend; only its public Form ID is in forminit-config.js. Customer data and files are sent directly to Forminit after submission, not stored in this repository. Only shortlisted work IDs are stored in localStorage.
 
 This edition is separate from the existing VELAV website. No CNAME file is included.
 
@@ -27,6 +27,12 @@ Code and brand artwork are published for viewing; no open-source license is gran
 
 ## Reference attachments
 
-The brief supports local single-file selection and drag/drop (PPT/PPTX, PDF, Word, common images and video). Limits: one file, up to 100 MB; MB is decimal. Selected files remain in tab memory and are lost on refresh. No bytes are uploaded, saved in the repository or included in the downloaded brief. The brief includes filenames and sizes only; customers must send files separately via WeChat or a sharing link. Real delivery requires a separately configured upload service/backend with private storage and server-side validation.
+The brief accepts multiple files, up to 25 × 1024 × 1024 bytes combined. Text is separate from this file cap. Formats are restricted to Forminit's documented supported formats, including presentations, spreadsheets, documents, images, video, audio and archives. Both selection and submission validate files; the server applies its own validation. Pending files remain in tab memory until submitted and are lost on refresh.
+
+Forminit setup: Public mode, authorized domain `yi-chieh1210.github.io`, honeypot `_gotcha`. The site sends multipart FormData with `fi-sender-fullName`, `fi-text-contact`, `fi-text-project`, and repeated `fi-file-attachments[]`. It shows success only after a successful JSON response containing a submission receipt. Errors retain the form and files; ambiguous network errors do not auto-retry. Recipient and email workflow are configured privately in Forminit; no API key belongs in this repository.
+
+Free-plan limits at setup: 100 submissions/month and 100 MB total file storage. Monitor quota in Forminit and download/archive files before managing retention. Google Drive storage is not connected. Email notification is an alert; Forminit stores the original submission and attachments. Mainland network reliability requires testing on the customer's actual connection.
+
+Docs: https://forminit.com/docs/file-upload/ and https://forminit.com/pricing/
 
 Budget ranges: ¥30 or below, ¥30–100, ¥100–300, ¥300 and above. Timing includes one week, half a month, one month, three months, or a required specified deadline (today or later).
